@@ -133,7 +133,7 @@ TxMsg |= Packer.TxSignalPack(value3, sig3);
 The user needs to make sure that the signals do not overlap with each other by properly specifying the `Length` and `StartBit`.
 
 ### **Multiplexing**
-A message can contain multiplexed data, i.e. layout can change depending on a multiplexor value. The `Packer` class is unaware of multiplexing, so it's up to the user to check that the given message actually contains the signal.
+A message can contain multiplexed data, i.e. layout can change depending on a multiplexor value.
 As an example, consider the following dbc lines:
 ```
 BO_ 568 UI_driverAssistRoadSign: 8 GTW
@@ -160,6 +160,61 @@ if(message.IsMultiplexed())
 {
 	// ...
 }
+```
+
+#### **Multiplexer-aware Packing/Unpacking**
+The `Packer` class now offers multiplexer-aware functions that allow you to pack and unpack signals based on the current multiplexer value:
+
+```cs
+// Pack a signal with multiplexer awareness
+// Returns true if the signal was packed, false if it was skipped due to multiplexer value mismatch
+bool wasSignalPacked = Packer.TxMultiplexedSignalPack(messageBytes, value, signal, multiplexerValue);
+
+// Unpack a signal with multiplexer awareness
+// Returns true if the signal was unpacked, false if it was skipped due to multiplexer value mismatch
+bool wasSignalUnpacked = Packer.RxMultiplexedSignalUnpack(messageBytes, signal, multiplexerValue, out double unpackedValue);
+```
+
+There's also a helper class `MultiplexedMessage` that makes it easy to pack and unpack entire messages with multiplexer awareness:
+
+```cs
+// Pack all signals in a message, automatically handling the multiplexer
+// The values dictionary should contain the signal names and their values
+byte[] packedData = MultiplexedMessage.PackMessage(message, signalValues);
+
+// Unpack all signals from a message, automatically handling the multiplexer
+// The result contains only the signals that were applicable for the detected multiplexer value
+Dictionary<string, double> unpackedSignals = MultiplexedMessage.UnpackMessage(message, receivedData);
+
+// Pack a message with a specific multiplexer value
+byte[] packedDataWithMux = MultiplexedMessage.PackMessageWithMultiplexer(message, multiplexerValue, signalValues);
+```
+
+Example of packing and unpacking a multiplexed message:
+
+```cs
+// Create a dictionary of signal values to pack
+var signalValues = new Dictionary<string, double>
+{
+    { "UI_roadSign", 1 }, // This is the multiplexer signal with value 1
+    { "UI_stopSignStopLineDist", 25.5 }, // This signal will be packed because it's for multiplexer value 1
+    { "UI_dummyData", 1 } // This signal will be skipped because it's for multiplexer value 0
+};
+
+// Pack the message
+byte[] packedData = MultiplexedMessage.PackMessage(message, signalValues);
+
+// Send the packed data via CAN...
+
+// Receive data via CAN...
+
+// Unpack the message
+var unpackedSignals = MultiplexedMessage.UnpackMessage(message, receivedData);
+
+// unpackedSignals will contain:
+// - "UI_roadSign" = 1
+// - "UI_stopSignStopLineDist" = 25.5
+// but not "UI_dummyData" because it's not applicable for multiplexer value 1
 ```
 
 <br>

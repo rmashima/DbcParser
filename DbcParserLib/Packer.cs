@@ -135,6 +135,207 @@ namespace DbcParserLib
             return iVal;
         }
 
+        /// <summary>
+        /// Function to pack a multiplexed signal into a CAN data message, handling multiplexer awareness
+        /// </summary>
+        /// <param name="message">A ref to the byte array containing the message</param>
+        /// <param name="value">Value to be packed</param>
+        /// <param name="signal">Signal containing dbc information</param>
+        /// <param name="multiplexerValue">The current value of the multiplexer signal</param>
+        /// <returns>True if the signal was packed, false if it was skipped due to multiplexer value mismatch</returns>
+        public static bool TxMultiplexedSignalPack(uint8_T[] message, double value, Signal signal, int multiplexerValue)
+        {
+            var multiplexingInfo = signal.MultiplexingInfo();
+            
+            // If signal is a multiplexor, pack it like a normal signal and return true
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexor)
+            {
+                TxSignalPack(message, value, signal);
+                return true;
+            }
+            
+            // If signal is multiplexed, check if the multiplexer value matches the signal's group
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexed)
+            {
+                // If the multiplexer value doesn't match the signal's group, skip packing
+                if (multiplexingInfo.Group != multiplexerValue)
+                {
+                    return false;
+                }
+            }
+            
+            // Pack the signal normally
+            TxSignalPack(message, value, signal);
+            return true;
+        }
+
+        /// <summary>
+        /// Function to pack a multiplexed signal into a CAN data message, handling multiplexer awareness
+        /// </summary>
+        /// <param name="value">Value to be packed</param>
+        /// <param name="signal">Signal containing dbc information</param>
+        /// <param name="multiplexerValue">The current value of the multiplexer signal</param>
+        /// <returns>Returns a 64 bit unsigned data message, or 0 if the signal was skipped due to multiplexer value mismatch</returns>
+        public static uint64_T TxMultiplexedSignalPack(double value, Signal signal, int multiplexerValue)
+        {
+            var multiplexingInfo = signal.MultiplexingInfo();
+            
+            // If signal is a multiplexor, pack it like a normal signal
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexor)
+            {
+                return TxSignalPack(value, signal);
+            }
+            
+            // If signal is multiplexed, check if the multiplexer value matches the signal's group
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexed)
+            {
+                // If the multiplexer value doesn't match the signal's group, return 0
+                if (multiplexingInfo.Group != multiplexerValue)
+                {
+                    return 0;
+                }
+            }
+            
+            // Pack the signal normally
+            return TxSignalPack(value, signal);
+        }
+
+        /// <summary>
+        /// Function to unpack a multiplexed signal from a CAN data message, handling multiplexer awareness
+        /// </summary>
+        /// <param name="receiveMessage">The message data</param>
+        /// <param name="signal">Signal containing dbc information</param>
+        /// <param name="multiplexerValue">The current value of the multiplexer signal</param>
+        /// <param name="unpackedValue">Output parameter containing the unpacked value if successful</returns>
+        /// <returns>True if the signal was unpacked, false if it was skipped due to multiplexer value mismatch</returns>
+        public static bool RxMultiplexedSignalUnpack(uint8_T[] receiveMessage, Signal signal, int multiplexerValue, out double unpackedValue)
+        {
+            var multiplexingInfo = signal.MultiplexingInfo();
+            
+            // If signal is a multiplexor, unpack it like a normal signal
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexor)
+            {
+                unpackedValue = RxSignalUnpack(receiveMessage, signal);
+                return true;
+            }
+            
+            // If signal is multiplexed, check if the multiplexer value matches the signal's group
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexed)
+            {
+                // If the multiplexer value doesn't match the signal's group, skip unpacking
+                if (multiplexingInfo.Group != multiplexerValue)
+                {
+                    unpackedValue = 0;
+                    return false;
+                }
+            }
+            
+            // Unpack the signal normally
+            unpackedValue = RxSignalUnpack(receiveMessage, signal);
+            return true;
+        }
+
+        /// <summary>
+        /// Function to unpack a multiplexed signal from a CAN data message, handling multiplexer awareness
+        /// </summary>
+        /// <param name="RxMsg64">The 64 bit unsigned data message</param>
+        /// <param name="signal">Signal containing dbc information</param>
+        /// <param name="multiplexerValue">The current value of the multiplexer signal</param>
+        /// <param name="unpackedValue">Output parameter containing the unpacked value if successful</returns>
+        /// <returns>True if the signal was unpacked, false if it was skipped due to multiplexer value mismatch</returns>
+        public static bool RxMultiplexedSignalUnpack(uint64_T RxMsg64, Signal signal, int multiplexerValue, out double unpackedValue)
+        {
+            var multiplexingInfo = signal.MultiplexingInfo();
+            
+            // If signal is a multiplexor, unpack it like a normal signal
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexor)
+            {
+                unpackedValue = RxSignalUnpack(RxMsg64, signal);
+                return true;
+            }
+            
+            // If signal is multiplexed, check if the multiplexer value matches the signal's group
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexed)
+            {
+                // If the multiplexer value doesn't match the signal's group, skip unpacking
+                if (multiplexingInfo.Group != multiplexerValue)
+                {
+                    unpackedValue = 0;
+                    return false;
+                }
+            }
+            
+            // Unpack the signal normally
+            unpackedValue = RxSignalUnpack(RxMsg64, signal);
+            return true;
+        }
+
+        /// <summary>
+        /// Function to pack a state (unsigned integer) into a CAN data message, with multiplexer awareness
+        /// </summary>
+        /// <param name="value">Value to be packed</param>
+        /// <param name="signal">Signal containing dbc information</param>
+        /// <param name="multiplexerValue">The current value of the multiplexer signal</param>
+        /// <returns>Returns a 64 bit unsigned data message, or 0 if the signal was skipped due to multiplexer value mismatch</returns>
+        public static uint64_T TxMultiplexedStatePack(uint64_T value, Signal signal, int multiplexerValue)
+        {
+            var multiplexingInfo = signal.MultiplexingInfo();
+            
+            // If signal is a multiplexor, pack it like a normal signal
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexor)
+            {
+                return TxStatePack(value, signal);
+            }
+            
+            // If signal is multiplexed, check if the multiplexer value matches the signal's group
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexed)
+            {
+                // If the multiplexer value doesn't match the signal's group, return 0
+                if (multiplexingInfo.Group != multiplexerValue)
+                {
+                    return 0;
+                }
+            }
+            
+            // Pack the signal normally
+            return TxStatePack(value, signal);
+        }
+
+        /// <summary>
+        /// Function to unpack a state (unsigned integer) from a CAN data message, with multiplexer awareness
+        /// </summary>
+        /// <param name="RxMsg64">The 64 bit unsigned data message</param>
+        /// <param name="signal">Signal containing dbc information</param>
+        /// <param name="multiplexerValue">The current value of the multiplexer signal</param>
+        /// <param name="unpackedValue">Output parameter containing the unpacked value if successful</returns>
+        /// <returns>True if the signal was unpacked, false if it was skipped due to multiplexer value mismatch</returns>
+        public static bool RxMultiplexedStateUnpack(uint64_T RxMsg64, Signal signal, int multiplexerValue, out uint64_T unpackedValue)
+        {
+            var multiplexingInfo = signal.MultiplexingInfo();
+            
+            // If signal is a multiplexor, unpack it like a normal signal
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexor)
+            {
+                unpackedValue = RxStateUnpack(RxMsg64, signal);
+                return true;
+            }
+            
+            // If signal is multiplexed, check if the multiplexer value matches the signal's group
+            if (multiplexingInfo.Role == MultiplexingRole.Multiplexed)
+            {
+                // If the multiplexer value doesn't match the signal's group, skip unpacking
+                if (multiplexingInfo.Group != multiplexerValue)
+                {
+                    unpackedValue = 0;
+                    return false;
+                }
+            }
+            
+            // Unpack the signal normally
+            unpackedValue = RxStateUnpack(RxMsg64, signal);
+            return true;
+        }
+
         private static int64_T TxPackApplySignAndScale(double value, Signal signal)
         {
             int64_T iVal;
@@ -310,6 +511,130 @@ namespace DbcParserLib
         public static double AsFloatingPoint(int64_T value)
         {
             return new DoubleConverter() { Integer = value }.Float;
+        }
+    }
+
+    /// <summary>
+    /// Helper class to handle multiplexed message packing and unpacking
+    /// </summary>
+    public static class MultiplexedMessage
+    {
+        /// <summary>
+        /// Pack all signals for a message, handling multiplexer signals automatically
+        /// </summary>
+        /// <param name="message">The message containing signals</param>
+        /// <param name="values">A dictionary of signal name to value mappings</param>
+        /// <returns>A byte array representing the packed message</returns>
+        public static uint8_T[] PackMessage(Message message, Dictionary<string, double> values)
+        {
+            // Create byte array for the message data
+            var data = new uint8_T[message.DLC];
+            
+            // First find and pack the multiplexor signal
+            var multiplexorSignal = message.Signals.FirstOrDefault(s => s.MultiplexingInfo().Role == MultiplexingRole.Multiplexor);
+            int multiplexerValue = 0;
+            
+            if (multiplexorSignal != null && values.TryGetValue(multiplexorSignal.Name, out var muxValue))
+            {
+                // Pack the multiplexor signal first
+                Packer.TxSignalPack(data, muxValue, multiplexorSignal);
+                multiplexerValue = (int)muxValue;
+            }
+            
+            // Then pack all other signals according to the multiplexer value
+            foreach (var signal in message.Signals)
+            {
+                // Skip the multiplexor as it's already packed
+                if (signal == multiplexorSignal)
+                    continue;
+                
+                if (values.TryGetValue(signal.Name, out var signalValue))
+                {
+                    Packer.TxMultiplexedSignalPack(data, signalValue, signal, multiplexerValue);
+                }
+            }
+            
+            return data;
+        }
+        
+        /// <summary>
+        /// Unpack all signals from a message, handling multiplexer signals automatically
+        /// </summary>
+        /// <param name="message">The message definition</param>
+        /// <param name="data">The received byte array</param>
+        /// <returns>A dictionary of signal name to unpacked value mappings</returns>
+        public static Dictionary<string, double> UnpackMessage(Message message, uint8_T[] data)
+        {
+            var result = new Dictionary<string, double>();
+            
+            // First find and unpack the multiplexor signal
+            var multiplexorSignal = message.Signals.FirstOrDefault(s => s.MultiplexingInfo().Role == MultiplexingRole.Multiplexor);
+            int multiplexerValue = 0;
+            
+            if (multiplexorSignal != null)
+            {
+                // Unpack the multiplexor signal first
+                var muxValue = Packer.RxSignalUnpack(data, multiplexorSignal);
+                result[multiplexorSignal.Name] = muxValue;
+                multiplexerValue = (int)muxValue;
+            }
+            
+            // Then unpack all other signals according to the multiplexer value
+            foreach (var signal in message.Signals)
+            {
+                // Skip the multiplexor as it's already unpacked
+                if (signal == multiplexorSignal)
+                    continue;
+                
+                if (Packer.RxMultiplexedSignalUnpack(data, signal, multiplexerValue, out var unpackedValue))
+                {
+                    result[signal.Name] = unpackedValue;
+                }
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// Pack a message with a specific multiplexer value
+        /// </summary>
+        /// <param name="message">The message containing signals</param>
+        /// <param name="multiplexerValue">The multiplexer value to use</param>
+        /// <param name="values">A dictionary of signal name to value mappings</param>
+        /// <returns>A byte array representing the packed message</returns>
+        public static uint8_T[] PackMessageWithMultiplexer(Message message, int multiplexerValue, Dictionary<string, double> values)
+        {
+            // Create byte array for the message data
+            var data = new uint8_T[message.DLC];
+            
+            // First find and pack the multiplexor signal
+            var multiplexorSignal = message.Signals.FirstOrDefault(s => s.MultiplexingInfo().Role == MultiplexingRole.Multiplexor);
+            
+            if (multiplexorSignal != null)
+            {
+                // Pack the multiplexor signal with the provided value
+                Packer.TxSignalPack(data, multiplexerValue, multiplexorSignal);
+            }
+            else
+            {
+                // No multiplexor found, but we'll still try to pack with the provided multiplexer value
+                // This is useful for cases where the multiplexor signal isn't explicitly marked in the DBC
+            }
+            
+            // Then pack all other signals according to the multiplexer value
+            foreach (var signal in message.Signals)
+            {
+                // Skip the multiplexor as it's already packed
+                if (signal == multiplexorSignal)
+                    continue;
+                
+                if (values.TryGetValue(signal.Name, out var signalValue))
+                {
+                    Packer.TxMultiplexedSignalPack(data, signalValue, signal, multiplexerValue);
+                }
+            }
+            
+            return data;
         }
     }
 }
